@@ -72,7 +72,7 @@ class JsonLocation extends AbstractLocation
             // Treat as javascript array
             if ($name) {
                 // name provided, store it under a key in the array
-                $result[$name] = $this->recurse($param, $this->json[$name]);
+                $result[$name] = $this->recurse($param, isset($this->json[$name]) ? $this->json[$name] : null);
             } else {
                 // top-level `array` or an empty name
                 $result = array_merge($result, $this->recurse($param, $this->json));
@@ -109,7 +109,7 @@ class JsonLocation extends AbstractLocation
             if ($properties = $param->getProperties()) {
                 foreach ($properties as $property) {
                     $key = $property->getWireName();
-                    if (isset($value[$key])) {
+                    if (array_key_exists($key, $value)) {
                         $result[$property->getName()] = $this->recurse(
                             $property,
                             $value[$key]
