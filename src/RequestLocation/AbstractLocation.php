@@ -3,7 +3,7 @@ namespace GuzzleHttp\Command\Guzzle\RequestLocation;
 
 use GuzzleHttp\Command\Guzzle\Operation;
 use GuzzleHttp\Command\Guzzle\Parameter;
-use GuzzleHttp\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Command\CommandInterface;
 
 abstract class AbstractLocation implements RequestLocationInterface
@@ -24,16 +24,18 @@ abstract class AbstractLocation implements RequestLocationInterface
     public function visit(
         CommandInterface $command,
         RequestInterface $request,
-        Parameter $param,
-        array $context
-    ) {}
+        Parameter $param
+    ) {
+        return $request;
+    }
 
     public function after(
         CommandInterface $command,
         RequestInterface $request,
-        Operation $operation,
-        array $context
-    ) {}
+        Operation $operation
+    ) {
+        return $request;
+    }
 
     /**
      * Prepare (filter and set desired name for request item) the value for

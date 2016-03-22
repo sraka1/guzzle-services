@@ -2,21 +2,21 @@
 namespace GuzzleHttp\Command\Guzzle\RequestLocation;
 
 use GuzzleHttp\Command\Guzzle\Parameter;
-use GuzzleHttp\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Post\PostBodyInterface;
 use GuzzleHttp\Command\CommandInterface;
 use GuzzleHttp\Command\Guzzle\Operation;
 
 /**
  * Adds POST fields to a request
+ * @TODO Fix
  */
 class PostFieldLocation extends AbstractLocation
 {
     public function visit(
         CommandInterface $command,
         RequestInterface $request,
-        Parameter $param,
-        array $context
+        Parameter $param
     ) {
         $body = $request->getBody();
         if (!($body instanceof PostBodyInterface)) {
@@ -27,13 +27,14 @@ class PostFieldLocation extends AbstractLocation
             $param->getWireName(),
             $this->prepareValue($command[$param->getName()], $param)
         );
+
+        return $request;
     }
 
     public function after(
         CommandInterface $command,
         RequestInterface $request,
-        Operation $operation,
-        array $context
+        Operation $operation
     ) {
         $additional = $operation->getAdditionalParameters();
         if ($additional && $additional->getLocation() == $this->locationName) {
@@ -52,5 +53,7 @@ class PostFieldLocation extends AbstractLocation
                 }
             }
         }
+
+        return $request;
     }
 }

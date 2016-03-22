@@ -2,7 +2,7 @@
 namespace GuzzleHttp\Command\Guzzle\RequestLocation;
 
 use GuzzleHttp\Command\Guzzle\Parameter;
-use GuzzleHttp\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Post\PostBodyInterface;
 use GuzzleHttp\Post\PostFileInterface;
 use GuzzleHttp\Post\PostFile;
@@ -10,14 +10,14 @@ use GuzzleHttp\Command\CommandInterface;
 
 /**
  * Adds POST files to a request
+ * @TODO fix
  */
 class PostFileLocation extends AbstractLocation
 {
     public function visit(
         CommandInterface $command,
         RequestInterface $request,
-        Parameter $param,
-        array $context
+        Parameter $param
     ) {
         $body = $request->getBody();
         if (!($body instanceof PostBodyInterface)) {
@@ -30,5 +30,7 @@ class PostFileLocation extends AbstractLocation
         }
 
         $body->addFile($value);
+
+        return $request;
     }
 }

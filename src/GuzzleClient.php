@@ -2,28 +2,17 @@
 namespace GuzzleHttp\Command\Guzzle;
 
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Command\AbstractClient;
-use GuzzleHttp\Command\Command;
-use GuzzleHttp\Command\CommandTransaction;
-use GuzzleHttp\Command\Guzzle\Subscriber\ProcessResponse;
-use GuzzleHttp\Command\Guzzle\Subscriber\ValidateInput;
-use GuzzleHttp\Event\HasEmitterTrait;
-use GuzzleHttp\Command\ServiceClientInterface;
-use GuzzleHttp\Ring\Future\FutureArray;
+use GuzzleHttp\Command\Guzzle\Subscriber\ProcessResponse; // @TODO Remove
+use GuzzleHttp\Command\Guzzle\Subscriber\ValidateInput; // @TODO Remove
+use GuzzleHttp\Command\ServiceClient;
 
 /**
  * Default Guzzle web service client implementation.
  */
-class GuzzleClient extends AbstractClient
+class GuzzleClient extends ServiceClient
 {
     /** @var Description Guzzle service description */
     private $description;
-
-    /** @var callable Factory used for creating commands */
-    private $commandFactory;
-
-    /** @var callable Serializer */
-    private $serializer;
 
     /**
      * The client constructor accepts an associative array of configuration
@@ -51,33 +40,27 @@ class GuzzleClient extends AbstractClient
         DescriptionInterface $description,
         array $config = []
     ) {
-        parent::__construct($client, $config);
         $this->description = $description;
-        $this->processConfig($config);
+        $serializer = isset($config['serializer'])
+            ? $config['serializer']
+            : new Serializer($this->description);
+
+        parent::__construct($client, $serializer, function(){}); // @todo responseToResult
+//        $this->processConfig($config); // @todo config?
     }
 
     public function getCommand($name, array $args = [])
     {
-        $factory = $this->commandFactory;
-
-        // Determine if a future array should be returned.
-        if (!empty($args['@future'])) {
-            $future = !empty($args['@future']);
-            unset($args['@future']);
-        } else {
-            $future = false;
+        if (!$this->description->hasOperation($name)) {
+            $name = ucfirst($name);
+            if (!$this->description->hasOperation($name)) {
+                throw new \InvalidArgumentException(
+                    "No operation found named {$name}"
+                );
+            }
         }
 
-        // Merge in default command options
-        $defaults = $this->getConfig('defaults') ?: [];
-        $args += $defaults;
-
-        if ($command = $factory($name, $args, $this)) {
-            $command->setFuture($future);
-            return $command;
-        }
-
-        throw new \InvalidArgumentException("No operation found named $name");
+        return parent::getCommand($name, $args);
     }
 
     public function getDescription()
@@ -85,98 +68,42 @@ class GuzzleClient extends AbstractClient
         return $this->description;
     }
 
-    protected function createFutureResult(CommandTransaction $transaction)
-    {
-        return new FutureArray(
-            $transaction->response->then(function () use ($transaction) {
-                return $transaction->result;
-            }),
-            [$transaction->response, 'wait'],
-            [$transaction->response, 'cancel']
-        );
-    }
-
-    protected function serializeRequest(CommandTransaction $trans)
-    {
-        $fn = $this->serializer;
-        return $fn($trans);
-    }
-
-    /**
-     * Creates a callable function used to create command objects from a
-     * service description.
-     *
-     * @param DescriptionInterface $description Service description
-     *
-     * @return callable Returns a command factory
-     */
-    public static function defaultCommandFactory(DescriptionInterface $description)
-    {
-        return function (
-            $name,
-            array $args = [],
-            ServiceClientInterface $client
-        ) use ($description) {
-            $operation = null;
-
-            if ($description->hasOperation($name)) {
-                $operation = $description->getOperation($name);
-            } else {
-                $name = ucfirst($name);
-                if ($description->hasOperation($name)) {
-                    $operation = $description->getOperation($name);
-                }
-            }
-
-            if (!$operation) {
-                return null;
-            }
-
-            return new Command($name, $args, ['emitter' => clone $client->getEmitter()]);
-        };
-    }
-
-    /**
-     * Prepares the client based on the configuration settings of the client.
-     *
-     * @param array $config Constructor config as an array
-     */
-    protected function processConfig(array $config)
-    {
-        // set defaults as an array if not provided
-        if (!isset($config['defaults'])) {
-            $config['defaults'] = [];
-        }
-        
-        // Use the passed in command factory or a custom factory if provided
-        $this->commandFactory = isset($config['command_factory'])
-            ? $config['command_factory']
-            : self::defaultCommandFactory($this->description);
-
-        // Add event listeners based on the configuration option
-        $emitter = $this->getEmitter();
-
-        if (!isset($config['validate']) ||
-            $config['validate'] === true
-        ) {
-            $emitter->attach(new ValidateInput($this->description));
-        }
-
-        $this->serializer = isset($config['serializer'])
-            ? $config['serializer']
-            : new Serializer($this->description);
-
-        if (!isset($config['process']) ||
-            $config['process'] === true
-        ) {
-            $emitter->attach(
-                new ProcessResponse(
-                    $this->description,
-                    isset($config['response_locations'])
-                        ? $config['response_locations']
-                        : []
-                )
-            );
-        }
-    }
+//    /**
+//     * Prepares the client based on the configuration settings of the client.
+//     *
+//     * @param array $config Constructor config as an array
+//     */
+//    protected function processConfig(array $config)
+//    {
+//        // set defaults as an array if not provided
+//        if (!isset($config['defaults'])) {
+//            $config['defaults'] = [];
+//        }
+//
+//        // Add event listeners based on the configuration option
+//        $emitter = $this->getEmitter();
+//
+//        if (!isset($config['validate']) ||
+//            $config['validate'] === true
+//        ) {
+//            $emitter->attach(new ValidateInput($this->description));
+//        }
+//
+//        $this->serializer = isset($config['serializer'])
+//            ? $config['serializer']
+//            : new Serializer($this->description);
+//
+//        if (!isset($config['process']) ||
+//            $config['process'] === true
+//        ) {
+//            $emitter->attach(
+//                new ProcessResponse(
+//                    $this->description,
+//                    isset($config['response_locations'])
+//                        ? $config['response_locations']
+//                        : []
+//                )
+//            );
+//        }
+//    }
 }
